@@ -6,11 +6,14 @@ import mdoc.internal.cli.Settings
 import mdoc.internal.io.ConsoleReporter
 import mdoc.internal.markdown.Markdown
 import mdoc.internal.markdown.MarkdownBuilder
+import tests.js.JsTests.suffix
 import tests.markdown.BaseMarkdownSuite
 
 import java.io.ByteArrayOutputStream
 import java.io.PrintStream
+import java.nio.charset.StandardCharsets
 import scala.meta.inputs.Input
+import scala.meta.internal.io.FileIO
 import scala.meta.io.AbsolutePath
 import scala.meta.io.Classpath
 
@@ -50,7 +53,15 @@ class JsScala3LinkerSuite extends BaseMarkdownSuite {
          |println("hello world!")
          |```
          |""".stripMargin
-    assertNoDiff(process("basic.md", original, baseSettings()), noInit)
+    assertNoDiff(
+      process("basic.md", original, baseSettings()),
+      s"""|```scala
+          |println("hello world!")
+          |```
+          |<div id="mdoc-html-run0" data-mdoc-js></div>
+          |${suffix("basic")}
+          |""".stripMargin
+    )
   }
 
   test("mdoc:js with an import map") {
@@ -72,7 +83,27 @@ class JsScala3LinkerSuite extends BaseMarkdownSuite {
       site = base.site.updated("js-module-kind", "ESModule"),
       importMapPath = Some(AbsolutePath(JsTests.importMap))
     )
-    assertNoDiff(process("facade.md", original, settings), noInit)
+    assertNoDiff(
+      process("facade.md", original, settings),
+      """|```scala
+         |import scala.scalajs.js
+         |import scala.scalajs.js.annotation.JSImport
+         |
+         |@js.native
+         |@JSImport("@stdlib/blas/base", JSImport.Namespace)
+         |object blas extends js.Object
+         |```
+         |```scala
+         |println(blas)
+         |```
+         |<div id="mdoc-html-run1" data-mdoc-js data-mdoc-module-name="./facade.md.js" ></div>
+         |<script type="module" src="facade.md.js"></script>
+         |<script type="module" src="mdoc.js"></script>
+         |""".stripMargin
+    )
+    // the import map in the test resources maps @stdlib/blas to this URL
+    val js = FileIO.slurp(settings.out.head.resolve("facade.md.js"), StandardCharsets.UTF_8)
+    assert(js.contains("from \"https://cdn.jsdelivr.net/npm/@stdlib/blas@0.2.1/+esm/base\""), js)
   }
 
 }

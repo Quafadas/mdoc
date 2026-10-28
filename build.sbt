@@ -437,6 +437,7 @@ lazy val jsWorker =
     .dependsOn(jsApi)
     .settings(
       sharedSettings,
+      sharedJavaSettings,
       moduleName := "mdoc-js-worker",
       libraryDependencies ++= Seq(
         "org.scala-js" %% "scalajs-linker" % scalaJSVersion % Provided cross
